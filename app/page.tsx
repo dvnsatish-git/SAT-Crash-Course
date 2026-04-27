@@ -91,6 +91,33 @@ export default function Dashboard() {
           ))}
         </div>
 
+        {/* Quick Quiz */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div style={{ fontSize: 10, color: "#64748b", letterSpacing: 2, textTransform: "uppercase", fontFamily: "monospace" }}>⚡ Quick Quiz</div>
+            <span style={{ fontSize: 11, color: "#475569", fontFamily: "monospace" }}>pick a mode &amp; go</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+            {([
+              { id: "reel",   icon: "🎬", label: "Reel",   sub: "2q",  color: "#8b5cf6" },
+              { id: "rocket", icon: "🚀", label: "Rocket", sub: "4q · 5m", color: "#06b6d4" },
+              { id: "beast",  icon: "🔥", label: "Beast",  sub: "7q · 10m", color: "#f97316" },
+              { id: "legend", icon: "👑", label: "Legend", sub: "10q · 15m", color: "#10b981" },
+            ] as const).map((m) => (
+              <Link key={m.id} href={`/quiz?mode=${m.id}`} style={{
+                background: `linear-gradient(160deg,${m.color}22,${m.color}0a)`,
+                border: `1px solid ${m.color}55`,
+                borderRadius: 14, padding: "12px 8px",
+                textDecoration: "none", textAlign: "center", display: "block",
+              }}>
+                <div style={{ fontSize: 26, marginBottom: 5 }}>{m.icon}</div>
+                <div style={{ fontSize: 12, fontWeight: "bold", color: m.color, marginBottom: 2 }}>{m.label}</div>
+                <div style={{ fontSize: 10, color: "#475569", fontFamily: "monospace" }}>{m.sub}</div>
+              </Link>
+            ))}
+          </div>
+        </div>
+
         {/* Today's Focus */}
         {todayTask && (
           <div style={{ background: `linear-gradient(135deg, ${todayWeek.color}22, ${todayWeek.color}11)`, border: `1px solid ${todayWeek.color}44`, borderRadius: 14, padding: "14px 16px", marginBottom: 16 }}>

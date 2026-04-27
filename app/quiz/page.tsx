@@ -9,10 +9,10 @@ import type { Question } from "../lib/types";
 type Phase = "select" | "playing" | "done";
 
 const MODES = [
-  { id: "reel",    label: "Reel Mode",      sub: "2 questions · no timer",  icon: "🎬", count: 2,  time: 0,   color: "#8b5cf6" },
-  { id: "sprint",  label: "5 Min Sprint",   sub: "~4 questions · 5 min",    icon: "⚡", count: 4,  time: 300, color: "#06b6d4" },
-  { id: "rush",    label: "10 Min Rush",    sub: "~7 questions · 10 min",   icon: "🔥", count: 7,  time: 600, color: "#f97316" },
-  { id: "hustle",  label: "15 Min Hustle",  sub: "~10 questions · 15 min",  icon: "💪", count: 10, time: 900, color: "#10b981" },
+  { id: "reel",    label: "Reel Mode",    sub: "2 questions · no timer · just vibe",   icon: "🎬", count: 2,  time: 0,   color: "#8b5cf6" },
+  { id: "rocket",  label: "Rocket Mode",  sub: "4 questions · 5 min · blast off 🚀",   icon: "🚀", count: 4,  time: 300, color: "#06b6d4" },
+  { id: "beast",   label: "Beast Mode",   sub: "7 questions · 10 min · go hard 🔥",    icon: "🔥", count: 7,  time: 600, color: "#f97316" },
+  { id: "legend",  label: "Legend Mode",  sub: "10 questions · 15 min · become elite", icon: "👑", count: 10, time: 900, color: "#10b981" },
 ];
 
 type Mode = typeof MODES[0];
@@ -27,10 +27,25 @@ export default function QuickQuiz() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [history, setHistory]   = useState<QuestionHistory>({});
   const [results, setResults]   = useState<boolean[]>([]);
+  const [autoMode, setAutoMode] = useState<Mode | null>(null);
 
   useEffect(() => {
-    loadData<QuestionHistory>("qHistory", {}).then(setHistory);
+    // Read ?mode= param — must run client-side only
+    const modeId = new URLSearchParams(window.location.search).get("mode");
+    if (modeId) {
+      const m = MODES.find((m) => m.id === modeId);
+      if (m) setAutoMode(m);
+    }
   }, []);
+
+  useEffect(() => {
+    loadData<QuestionHistory>("qHistory", {}).then((h) => {
+      setHistory(h);
+      // Auto-start once history is ready
+      if (autoMode) startQuizWith(autoMode, h);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoMode]);
 
   // Countdown timer
   useEffect(() => {
@@ -45,14 +60,14 @@ export default function QuickQuiz() {
     return () => clearInterval(t);
   }, [phase, mode.time, timeLeft]);
 
-  const startQuiz = (m: Mode) => {
+  const startQuizWith = (m: Mode, h: QuestionHistory) => {
     setMode(m);
     const usedIds = new Set<string>();
     const picked: Question[] = [];
     for (let i = 0; i < m.count; i++) {
       const pool = QUESTIONS.filter((q) => !usedIds.has(q.id));
       if (!pool.length) break;
-      const q = selectAdaptive(pool, history);
+      const q = selectAdaptive(pool, h);
       picked.push(q);
       usedIds.add(q.id);
     }
@@ -64,6 +79,8 @@ export default function QuickQuiz() {
     setTimeLeft(m.time);
     setPhase("playing");
   };
+
+  const startQuiz = (m: Mode) => startQuizWith(m, history);
 
   const answer = (idx: number) => {
     if (selected !== null) return;
@@ -103,7 +120,7 @@ export default function QuickQuiz() {
 
         <div style={{ maxWidth: 480, margin: "0 auto", padding: "20px 16px" }}>
           <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 24, lineHeight: 1.7 }}>
-            Practice anywhere — bus, line, break. Pick a mode and go.
+            Bus, break, waiting in line — pick a mode and get those reps in. 🎯
           </div>
 
           {MODES.map((m) => (
