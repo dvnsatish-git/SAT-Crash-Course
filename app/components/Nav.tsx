@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 
 const ITEMS = [
   { href: "/", icon: "📊", label: "Home" },
+  { href: "/quiz", icon: "⚡", label: "Quiz" },
   { href: "/practice", icon: "✏️", label: "Practice" },
   { href: "/exam", icon: "⏱️", label: "Exam" },
   { href: "/plan", icon: "📅", label: "Plan" },
@@ -27,11 +28,11 @@ export default function Nav() {
             flex: 1, display: "flex", flexDirection: "column",
             alignItems: "center", justifyContent: "center", gap: 2,
             textDecoration: "none", color: active ? "#f97316" : "#64748b",
-            fontSize: 10, fontFamily: "monospace", letterSpacing: 0.5,
+            fontSize: 9, fontFamily: "monospace", letterSpacing: 0.3,
             textTransform: "uppercase", transition: "color 0.15s",
             borderTop: active ? "2px solid #f97316" : "2px solid transparent",
           }}>
-            <span style={{ fontSize: 18, lineHeight: 1 }}>{item.icon}</span>
+            <span style={{ fontSize: 16, lineHeight: 1 }}>{item.icon}</span>
             <span>{item.label}</span>
           </Link>
         );
