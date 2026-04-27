@@ -16,9 +16,8 @@ export async function POST(req: NextRequest) {
 
     const text = response.content.find((b) => b.type === "text")?.text ?? "";
     return NextResponse.json({ text });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("Chat API error:", msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch (err) {
+    console.error("Chat API error:", err);
+    return NextResponse.json({ error: "API error" }, { status: 500 });
   }
 }
