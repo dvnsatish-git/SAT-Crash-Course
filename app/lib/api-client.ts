@@ -72,6 +72,24 @@ export async function saveData<T>(key: string, value: T): Promise<void> {
   await serverSet(key, value);
 }
 
+/**
+ * Read-only fetch scoped to an explicit device/share code — used by the
+ * read-only parent dashboard, which has no local data of its own for the
+ * student's device. Never touches localStorage.
+ */
+export async function loadDataForDevice<T>(deviceId: string, store: string, fallback: T): Promise<T> {
+  try {
+    const res = await fetch(`/api/storage?store=${encodeURIComponent(store)}`, {
+      headers: { "x-device-id": deviceId },
+    });
+    if (!res.ok) return fallback;
+    const json = await res.json();
+    return (json.data as T) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 /** Awards XP and updates the daily streak; safe to call fire-and-forget. */
 export async function awardXp(amount: number): Promise<GamificationProfile> {
   const profile = await loadData<GamificationProfile>("gamification", emptyProfile());

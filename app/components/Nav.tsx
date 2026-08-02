@@ -16,6 +16,7 @@ const ITEMS = [
 
 export default function Nav() {
   const path = usePathname();
+  if (path.startsWith("/parent")) return null;
   return (
     <nav style={{
       position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,

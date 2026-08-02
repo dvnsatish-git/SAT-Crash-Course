@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
-import { loadData } from "../lib/api-client";
+import { loadData, getDeviceId } from "../lib/api-client";
 import { topicStats } from "../lib/adaptive";
 import { QUESTIONS } from "../lib/questions";
 import { ERROR_CATEGORY_LABELS } from "../lib/types";
@@ -15,6 +15,12 @@ export default function Analytics() {
   const [errorLog, setErrorLog] = useState<ErrorEntry[]>([]);
   const [completedDays, setCompletedDays] = useState<Record<string, boolean>>({});
   const [loaded, setLoaded] = useState(false);
+  const [parentLink, setParentLink] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    setParentLink(`${window.location.origin}/parent/${getDeviceId()}`);
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -160,6 +166,19 @@ export default function Analytics() {
         <Section title="Activity by Subject" note="Counted by questions attempted — the app doesn't track wall-clock study time yet.">
           <BarRow label="Math" pct={(activityBySection.math / maxActivity) * 100} color="#f97316" valueLabel={`${activityBySection.math} attempts`} />
           <BarRow label="English" pct={(activityBySection.english / maxActivity) * 100} color="#8b5cf6" valueLabel={`${activityBySection.english} attempts`} />
+        </Section>
+
+        {/* Parent share link */}
+        <Section title="Share with Parent" note="Read-only summary — no individual mistakes, notes, or edit access are exposed.">
+          <div style={{ display: "flex", gap: 8 }}>
+            <input readOnly value={parentLink} onFocus={(e) => e.target.select()} style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "9px 10px", color: "#94a3b8", fontSize: 11, fontFamily: "monospace" }} />
+            <button
+              onClick={() => { navigator.clipboard?.writeText(parentLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+              style={{ background: CYAN, border: "none", color: "#fff", borderRadius: 8, padding: "0 14px", fontSize: 12, cursor: "pointer" }}
+            >
+              {copied ? "Copied!" : "Copy Link"}
+            </button>
+          </div>
         </Section>
       </div>
     </div>
