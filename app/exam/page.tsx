@@ -1,8 +1,10 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { shuffled, getQuestions } from "../lib/questions";
-import { loadData, saveData } from "../lib/api-client";
-import type { Question, ExamRecord } from "../lib/types";
+import { loadData, saveData, awardXp } from "../lib/api-client";
+import { newErrorEntry } from "../lib/errorLog";
+import { XP_RULES } from "../lib/gamification";
+import type { Question, ExamRecord, ErrorEntry } from "../lib/types";
 
 type Phase = "setup" | "exam" | "results";
 
@@ -61,6 +63,29 @@ export default function Exam() {
     };
     const prev = await loadData<ExamRecord[]>("examRecords", []);
     saveData("examRecords", [...prev, record]);
+
+    const wrongEntries: ErrorEntry[] = qs
+      .map((q, i) => ({ q, userIdx: ans[i] }))
+      .filter(({ q, userIdx }) => userIdx !== q.answer)
+      .map(({ q, userIdx }) =>
+        newErrorEntry({
+          source: "exam",
+          testOrAssignment: "In-app practice exam",
+          section: q.section,
+          topic: q.topic,
+          difficulty: q.difficulty,
+          questionRef: q.question.slice(0, 80),
+          questionText: q.question,
+          userAnswer: userIdx !== null ? q.options[userIdx] : "unanswered",
+          correctAnswer: q.options[q.answer],
+          explanation: q.explanation,
+        })
+      );
+    if (wrongEntries.length > 0) {
+      const log = await loadData<ErrorEntry[]>("errorLog", []);
+      saveData("errorLog", [...wrongEntries, ...log]);
+    }
+    await awardXp(XP_RULES.completedExam);
     setPhase("results");
   }, []);
 

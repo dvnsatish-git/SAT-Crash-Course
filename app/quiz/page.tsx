@@ -2,9 +2,11 @@
 import { useState, useEffect } from "react";
 import { QUESTIONS } from "../lib/questions";
 import { selectAdaptive } from "../lib/adaptive";
-import { loadData, saveData } from "../lib/api-client";
+import { loadData, saveData, awardXp } from "../lib/api-client";
+import { newErrorEntry } from "../lib/errorLog";
+import { XP_RULES } from "../lib/gamification";
 import type { QuestionHistory } from "../lib/adaptive";
-import type { Question } from "../lib/types";
+import type { Question, ErrorEntry } from "../lib/types";
 
 type Phase = "select" | "playing" | "done";
 
@@ -96,6 +98,23 @@ export default function QuickQuiz() {
     };
     setHistory(next);
     saveData("qHistory", next);
+
+    awardXp(correct ? XP_RULES.correctAnswer : XP_RULES.incorrectAttempt);
+
+    if (!correct) {
+      const entry = newErrorEntry({
+        source: "quiz",
+        section: q.section,
+        topic: q.topic,
+        difficulty: q.difficulty,
+        questionRef: q.question.slice(0, 80),
+        questionText: q.question,
+        userAnswer: q.options[idx],
+        correctAnswer: q.options[q.answer],
+        explanation: q.explanation,
+      });
+      loadData<ErrorEntry[]>("errorLog", []).then((log) => saveData("errorLog", [entry, ...log]));
+    }
   };
 
   const goNext = () => {

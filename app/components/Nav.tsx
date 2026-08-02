@@ -9,6 +9,7 @@ const ITEMS = [
   { href: "/exam", icon: "⏱️", label: "Exam" },
   { href: "/plan", icon: "📅", label: "Plan" },
   { href: "/tracker", icon: "📈", label: "Scores" },
+  { href: "/errors", icon: "🧠", label: "Errors" },
   { href: "/tutor", icon: "🤖", label: "Tutor" },
 ];
 
