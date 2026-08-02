@@ -50,6 +50,8 @@ export default function Dashboard() {
     { href: "/exam", icon: "⏱️", label: "Practice Exam", color: "#8b5cf6", desc: "Timed simulation with score estimate" },
     { href: "/plan", icon: "📅", label: "Study Plan", color: "#06b6d4", desc: "6-week day-by-day schedule" },
     { href: "/tracker", icon: "📈", label: "Score Tracker", color: "#10b981", desc: "Log and track your progress" },
+    { href: "/errors", icon: "🧠", label: "Error Log", color: "#ef4444", desc: "Review mistakes on a spaced schedule" },
+    { href: "/analytics", icon: "📉", label: "Analytics", color: "#06b6d4", desc: "Domain accuracy, trends & patterns" },
     { href: "/tutor", icon: "🤖", label: "AI Tutor", color: "#f59e0b", desc: "Ask Claude anything SAT-related" },
   ];
 
