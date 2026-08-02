@@ -3,9 +3,14 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { daysUntilExam, WEEKS, MATH_TOPICS, ENGLISH_TOPICS } from "./lib/data";
 import { getLS } from "./lib/storage";
-import { loadData, syncBadges } from "./lib/api-client";
-import { emptyProfile, levelInfo, BADGE_CATALOG } from "./lib/gamification";
-import type { ExamRecord, GamificationProfile, StudentBadge } from "./lib/types";
+import { loadData, saveData, awardXp, syncBadges } from "./lib/api-client";
+import { emptyProfile, levelInfo, BADGE_CATALOG, XP_RULES } from "./lib/gamification";
+import { topicStats } from "./lib/adaptive";
+import { QUESTIONS } from "./lib/questions";
+import { dueEntries } from "./lib/errorLog";
+import { generateMissions } from "./lib/missions";
+import type { ExamRecord, GamificationProfile, StudentBadge, ErrorEntry } from "./lib/types";
+import type { QuestionHistory } from "./lib/adaptive";
 
 const H = { background: "linear-gradient(135deg, #0f0c29 0%, #1a1a2e 50%, #0f3460 100%)", minHeight: "100vh", fontFamily: "Georgia, serif", color: "#f0f0f0" };
 
@@ -16,6 +21,9 @@ export default function Dashboard() {
   const [examRecords, setExamRecords] = useState<ExamRecord[]>([]);
   const [profile, setProfile] = useState<GamificationProfile>(emptyProfile());
   const [badges, setBadges] = useState<StudentBadge[]>([]);
+  const [qHistory, setQHistory] = useState<QuestionHistory>({});
+  const [errorLog, setErrorLog] = useState<ErrorEntry[]>([]);
+  const [missionCompletions, setMissionCompletions] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setDays(daysUntilExam());
@@ -24,6 +32,9 @@ export default function Dashboard() {
     setExamRecords(getLS("examRecords", []));
     loadData<GamificationProfile>("gamification", emptyProfile()).then(setProfile);
     syncBadges().then(setBadges);
+    loadData<QuestionHistory>("qHistory", {}).then(setQHistory);
+    loadData<ErrorEntry[]>("errorLog", []).then(setErrorLog);
+    loadData<Record<string, boolean>>("missionCompletions", {}).then(setMissionCompletions);
   }, []);
 
   const completedCount = Object.values(completedDays).filter(Boolean).length;
@@ -44,6 +55,29 @@ export default function Dashboard() {
   const todayDayIdx = new Date().getDay(); // 0=Sun
   const dayMap = [6, 0, 1, 2, 3, 4, 5]; // Sun→6, Mon→0, ...
   const todayTask = todayWeek?.days[dayMap[todayDayIdx]];
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const stats = topicStats(qHistory, QUESTIONS);
+  const dueReviewCount = dueEntries(errorLog).length;
+  const missions = generateMissions({
+    stats,
+    dueReviewCount,
+    daysUntilExam: days,
+    todayCurriculum: todayTask ? { math: todayTask.math, english: todayTask.english } : null,
+  });
+
+  const toggleMission = async (id: string) => {
+    const key = `${todayStr}:${id}`;
+    const nowDone = !missionCompletions[key];
+    const next = { ...missionCompletions, [key]: nowDone };
+    setMissionCompletions(next);
+    saveData("missionCompletions", next);
+    if (nowDone) {
+      const updated = await awardXp(XP_RULES.completedPlanDay);
+      setProfile(updated);
+      syncBadges().then(setBadges);
+    }
+  };
 
   const quickLinks = [
     { href: "/practice", icon: "✏️", label: "Practice Questions", color: "#f97316", desc: "Topic drills with instant feedback" },
@@ -161,20 +195,54 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Today's Focus */}
+        {/* Today's Missions — adaptive, rule-based */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+            <div style={{ fontSize: 10, color: "#64748b", letterSpacing: 2, textTransform: "uppercase", fontFamily: "monospace" }}>Today&apos;s Missions</div>
+            <span style={{ fontSize: 11, color: "#475569", fontFamily: "monospace" }}>adapts to your weak spots</span>
+          </div>
+          {missions.map((m) => {
+            const key = `${todayStr}:${m.id}`;
+            const done = !!missionCompletions[key];
+            const typeColor: Record<string, string> = { review: "#f59e0b", drill: "#f97316", timed: "#06b6d4", test: "#8b5cf6", learn: "#10b981" };
+            const color = typeColor[m.taskType] ?? "#94a3b8";
+            return (
+              <div key={m.id} style={{
+                background: done ? "rgba(16,185,129,0.06)" : `${color}0d`,
+                border: `1px solid ${done ? "rgba(16,185,129,0.3)" : color + "33"}`,
+                borderRadius: 12, padding: "10px 12px", marginBottom: 8,
+                display: "flex", alignItems: "center", gap: 10,
+              }}>
+                <button onClick={() => toggleMission(m.id)} style={{
+                  width: 26, height: 26, borderRadius: 99, flexShrink: 0, cursor: "pointer",
+                  background: done ? "#10b981" : "rgba(255,255,255,0.07)",
+                  border: `2px solid ${done ? "#10b981" : "rgba(255,255,255,0.2)"}`,
+                  color: "#fff", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center",
+                }}>{done ? "✓" : ""}</button>
+                <Link href={m.href} style={{ flex: 1, textDecoration: "none", color: "#e2e8f0", opacity: done ? 0.55 : 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: "bold", textDecoration: done ? "line-through" : "none" }}>{m.title}</div>
+                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{m.rationale}</div>
+                </Link>
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{ fontSize: 11, color, fontFamily: "monospace" }}>{m.minutes}m</div>
+                  <div style={{ fontSize: 9, color: "#64748b", fontFamily: "monospace", textTransform: "uppercase" }}>{m.taskType}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Written weekly curriculum reference */}
         {todayTask && (
-          <div style={{ background: `linear-gradient(135deg, ${todayWeek.color}22, ${todayWeek.color}11)`, border: `1px solid ${todayWeek.color}44`, borderRadius: 14, padding: "14px 16px", marginBottom: 16 }}>
+          <div style={{ background: `linear-gradient(135deg, ${todayWeek.color}18, ${todayWeek.color}09)`, border: `1px solid ${todayWeek.color}33`, borderRadius: 14, padding: "12px 16px", marginBottom: 16 }}>
             <div style={{ fontSize: 10, color: todayWeek.color, letterSpacing: 2, textTransform: "uppercase", fontFamily: "monospace", marginBottom: 6 }}>
-              Today · Week {todayWeek.week}: {todayWeek.theme}
+              Week {todayWeek.week} curriculum reference: {todayWeek.theme}
             </div>
-            <div style={{ fontSize: 13, color: "#e2e8f0", marginBottom: 4 }}>
+            <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 3 }}>
               <span style={{ color: "#60a5fa" }}>Math:</span> {todayTask.math}
             </div>
-            <div style={{ fontSize: 13, color: "#e2e8f0", marginBottom: 4 }}>
-              <span style={{ color: "#a78bfa" }}>English:</span> {todayTask.english}
-            </div>
             <div style={{ fontSize: 12, color: "#94a3b8" }}>
-              <span style={{ color: "#fbbf24" }}>Review:</span> {todayTask.review}
+              <span style={{ color: "#a78bfa" }}>English:</span> {todayTask.english}
             </div>
           </div>
         )}

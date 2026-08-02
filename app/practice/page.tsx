@@ -34,6 +34,15 @@ export default function Practice() {
     });
   }, []);
 
+  // Deep-link support so the dashboard's daily missions can launch a specific drill
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const s = params.get("section");
+    const t = params.get("topic");
+    if (s === "math" || s === "english") setSection(s);
+    if (t) setTopic(t);
+  }, []);
+
   const topics = section === "math" ? MATH_TOPICS : ENGLISH_TOPICS;
   const color = COLOR[section];
 
