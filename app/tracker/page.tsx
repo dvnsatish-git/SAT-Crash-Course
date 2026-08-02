@@ -1,16 +1,23 @@
 "use client";
 import { useState, useEffect } from "react";
 import { loadData, saveData } from "../lib/api-client";
-import type { ExamRecord } from "../lib/types";
+import { MATH_TOPICS, ENGLISH_TOPICS } from "../lib/data";
+import { PRACTICE_SOURCE_LABELS } from "../lib/types";
+import type { ExamRecord, DomainResult, PracticeSource } from "../lib/types";
 
 const TARGET = 1500;
+const SOURCES = Object.entries(PRACTICE_SOURCE_LABELS) as [PracticeSource, string][];
 
 export default function Tracker() {
   const [records, setRecords] = useState<ExamRecord[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [form, setForm] = useState({ math: "", english: "", date: new Date().toISOString().slice(0, 10), type: "practice" as "practice" | "official", notes: "" });
+  const [form, setForm] = useState({ math: "", english: "", date: new Date().toISOString().slice(0, 10), type: "practice" as "practice" | "official", notes: "", source: "bluebook" as PracticeSource });
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState("");
+  const [domainResults, setDomainResults] = useState<DomainResult[]>([]);
+  const [showDomainBuilder, setShowDomainBuilder] = useState(false);
+  const [domainDraft, setDomainDraft] = useState({ section: "math" as "math" | "english", topic: MATH_TOPICS[0].id, correct: "", total: "" });
+  const [expandedRecord, setExpandedRecord] = useState<string | null>(null);
 
   useEffect(() => {
     loadData<ExamRecord[]>("examRecords", []).then((r) => { setRecords(r); setLoaded(true); });
@@ -30,11 +37,24 @@ export default function Tracker() {
       id: Date.now().toString(), date: form.date, type: form.type,
       mathCorrect: 0, mathTotal: 0, englishCorrect: 0, englishTotal: 0,
       mathScore: m, englishScore: e, totalScore: m + e, notes: form.notes,
+      source: form.source,
+      domainResults: domainResults.length > 0 ? domainResults : undefined,
     };
     persist([...records, record].sort((a, b) => a.date.localeCompare(b.date)));
-    setForm({ math: "", english: "", date: new Date().toISOString().slice(0, 10), type: "practice", notes: "" });
+    setForm({ math: "", english: "", date: new Date().toISOString().slice(0, 10), type: "practice", notes: "", source: "bluebook" });
+    setDomainResults([]);
+    setShowDomainBuilder(false);
     setError(""); setShowForm(false);
   };
+
+  const addDomainResult = () => {
+    const c = parseInt(domainDraft.correct), t = parseInt(domainDraft.total);
+    if (isNaN(c) || isNaN(t) || t <= 0 || c < 0 || c > t) return;
+    setDomainResults((prev) => [...prev, { section: domainDraft.section, topic: domainDraft.topic, correct: c, total: t }]);
+    setDomainDraft((p) => ({ ...p, correct: "", total: "" }));
+  };
+
+  const removeDomainResult = (idx: number) => setDomainResults((prev) => prev.filter((_, i) => i !== idx));
 
   const remove = (id: string) => persist(records.filter((r) => r.id !== id));
 
@@ -89,12 +109,53 @@ export default function Tracker() {
                 </select>
               </div>
             </div>
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 11, color: "#94a3b8", fontFamily: "monospace", marginBottom: 4 }}>Source</div>
+              <select value={form.source} onChange={(e) => setForm((p) => ({ ...p, source: e.target.value as PracticeSource }))}
+                style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "9px 10px", color: "#fff", fontSize: 13, fontFamily: "monospace", boxSizing: "border-box" }}>
+                {SOURCES.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              </select>
+            </div>
             <input type="text" placeholder="Notes (optional)…" value={form.notes}
               onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
               style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "9px 10px", color: "#fff", fontSize: 13, fontFamily: "Georgia,serif", boxSizing: "border-box", marginBottom: 12 }} />
+
+            <button onClick={() => setShowDomainBuilder(!showDomainBuilder)} style={{ background: "none", border: "none", color: "#10b981", fontSize: 12, cursor: "pointer", padding: 0, marginBottom: 10 }}>
+              {showDomainBuilder ? "▾" : "▸"} Add domain-level breakdown (optional)
+            </button>
+
+            {showDomainBuilder && (
+              <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: 10, marginBottom: 12 }}>
+                {domainResults.map((d, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, color: "#e2e8f0", padding: "4px 0" }}>
+                    <span>{d.section === "math" ? "📐" : "📖"} {d.topic}: {d.correct}/{d.total} ({Math.round((d.correct / d.total) * 100)}%)</span>
+                    <button onClick={() => removeDomainResult(i)} style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 13 }}>✕</button>
+                  </div>
+                ))}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: domainResults.length > 0 ? 8 : 0, marginBottom: 8 }}>
+                  <select value={domainDraft.section} onChange={(e) => { const section = e.target.value as "math" | "english"; setDomainDraft((p) => ({ ...p, section, topic: (section === "math" ? MATH_TOPICS : ENGLISH_TOPICS)[0].id })); }}
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "7px 8px", color: "#fff", fontSize: 12, fontFamily: "monospace" }}>
+                    <option value="math">Math</option>
+                    <option value="english">English</option>
+                  </select>
+                  <select value={domainDraft.topic} onChange={(e) => setDomainDraft((p) => ({ ...p, topic: e.target.value }))}
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "7px 8px", color: "#fff", fontSize: 12, fontFamily: "monospace" }}>
+                    {(domainDraft.section === "math" ? MATH_TOPICS : ENGLISH_TOPICS).map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8 }}>
+                  <input type="number" placeholder="Correct" min={0} value={domainDraft.correct} onChange={(e) => setDomainDraft((p) => ({ ...p, correct: e.target.value }))}
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "7px 8px", color: "#fff", fontSize: 12, fontFamily: "monospace" }} />
+                  <input type="number" placeholder="Total" min={1} value={domainDraft.total} onChange={(e) => setDomainDraft((p) => ({ ...p, total: e.target.value }))}
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "7px 8px", color: "#fff", fontSize: 12, fontFamily: "monospace" }} />
+                  <button onClick={addDomainResult} style={{ background: "#10b981", border: "none", color: "#fff", borderRadius: 8, padding: "0 14px", fontSize: 12, cursor: "pointer" }}>Add</button>
+                </div>
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={save} style={{ flex: 1, background: "#10b981", border: "none", color: "#fff", borderRadius: 10, padding: "11px 0", fontSize: 14, cursor: "pointer", fontWeight: "bold" }}>Save Score</button>
-              <button onClick={() => { setShowForm(false); setError(""); }} style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", borderRadius: 10, padding: "11px 0", fontSize: 14, cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => { setShowForm(false); setError(""); setDomainResults([]); setShowDomainBuilder(false); }} style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", borderRadius: 10, padding: "11px 0", fontSize: 14, cursor: "pointer" }}>Cancel</button>
             </div>
           </div>
         )}
@@ -163,21 +224,37 @@ export default function Tracker() {
               <div key={r.id} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "12px 14px", marginBottom: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 11, color: "#94a3b8", fontFamily: "monospace" }}>{r.date}</span>
                       <span style={{ fontSize: 10, background: r.type === "official" ? "rgba(249,115,22,0.2)" : "rgba(96,165,250,0.2)", color: r.type === "official" ? "#f97316" : "#60a5fa", borderRadius: 99, padding: "1px 7px", fontFamily: "monospace" }}>{r.type}</span>
+                      {r.source && <span style={{ fontSize: 10, color: "#64748b", fontFamily: "monospace" }}>{PRACTICE_SOURCE_LABELS[r.source]}</span>}
                     </div>
                     <div style={{ display: "flex", gap: 14 }}>
                       <span style={{ fontSize: 12, color: "#f97316", fontFamily: "monospace" }}>Math: {r.mathScore}</span>
                       <span style={{ fontSize: 12, color: "#8b5cf6", fontFamily: "monospace" }}>English: {r.englishScore}</span>
                     </div>
                     {r.notes && <div style={{ fontSize: 11, color: "#64748b", marginTop: 4, fontStyle: "italic" }}>{r.notes}</div>}
+                    {r.domainResults && r.domainResults.length > 0 && (
+                      <button onClick={() => setExpandedRecord(expandedRecord === r.id ? null : r.id)} style={{ background: "none", border: "none", color: "#10b981", fontSize: 11, cursor: "pointer", padding: 0, marginTop: 6 }}>
+                        {expandedRecord === r.id ? "▾ Hide" : "▸ Show"} domain breakdown ({r.domainResults.length})
+                      </button>
+                    )}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ fontSize: 24, fontWeight: "bold", color: r.totalScore >= TARGET ? "#10b981" : "#f0f0f0" }}>{r.totalScore}</div>
                     <button onClick={() => remove(r.id)} style={{ background: "none", border: "none", color: "#334155", cursor: "pointer", fontSize: 16 }}>✕</button>
                   </div>
                 </div>
+                {expandedRecord === r.id && r.domainResults && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                    {r.domainResults.map((d, i) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#cbd5e1", padding: "3px 0" }}>
+                        <span>{d.section === "math" ? "📐" : "📖"} {d.topic}</span>
+                        <span style={{ fontFamily: "monospace", color: d.correct / d.total < 0.5 ? "#ef4444" : "#10b981" }}>{d.correct}/{d.total} ({Math.round((d.correct / d.total) * 100)}%)</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
