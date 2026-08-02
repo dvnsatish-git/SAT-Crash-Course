@@ -46,7 +46,6 @@ export default function QuickQuiz() {
       // Auto-start once history is ready
       if (autoMode) startQuizWith(autoMode, h);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoMode]);
 
   // Countdown timer
