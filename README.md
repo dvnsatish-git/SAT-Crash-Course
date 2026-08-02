@@ -6,7 +6,7 @@ A personal, mobile-first Digital SAT prep app: adaptive practice, timed exams, a
 ## Stack
 
 - Next.js (App Router) + TypeScript, no external UI framework — plain inline styles
-- Storage: `localStorage` synced to Upstash Redis (Vercel KV) per anonymous device ID — no accounts/auth
+- Storage: `localStorage` synced to a Redis instance (via `ioredis`, standard `redis://` protocol) per anonymous device ID — no accounts/auth
 - AI: Anthropic (Claude) for the tutor chat, AI-generated practice questions, and error explanations
 
 ## Setup
@@ -22,7 +22,7 @@ npm run dev
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `ANTHROPIC_API_KEY` | No | Enables the AI Tutor chat, AI-generated practice questions, and AI error explanations. Without it, the tutor/generation features are unavailable and error explanations fall back to a deterministic mock analysis — the app is fully usable without this key. |
-| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` (or `KV_REST_API_URL` / `KV_REST_API_TOKEN`, e.g. via Vercel's Upstash KV integration) | No, but recommended | Backs cross-device sync and the read-only Parent Dashboard share link. Without it, all data stays in the browser's `localStorage` only — a parent link opened on a different device/browser will show empty data since there's nothing server-side to read. |
+| `REDIS_URL` (a standard `redis://user:pass@host:port` string — the app also accepts a Vercel-injected project-specific name like `<integration>_REDIS_URL`) | No, but recommended | Backs cross-device sync and the read-only Parent Dashboard share link. Without it, all data stays in the browser's `localStorage` only — a parent link opened on a different device/browser will show empty data since there's nothing server-side to read. |
 
 ## Features
 
@@ -59,5 +59,6 @@ changes by running the dev server and exercising the feature in a browser.
 ## Deployment
 
 Deploys to Vercel (see `vercel.json`). Add the environment variables above in
-the Vercel project settings — the Upstash/Vercel KV integration will set the
-`KV_REST_API_URL`/`KV_REST_API_TOKEN` variables automatically if you attach it.
+the Vercel project settings — connecting a Redis database via Vercel's Storage
+tab (Marketplace → Redis/Upstash) will inject a `redis://` connection string
+automatically under a project-specific variable name.
