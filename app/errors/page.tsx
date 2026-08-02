@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
-import { loadData, saveData, awardXp, syncBadges } from "../lib/api-client";
+import { loadData, saveData, awardXp, syncBadges, getDeviceId } from "../lib/api-client";
 import { MATH_TOPICS, ENGLISH_TOPICS } from "../lib/data";
 import { newErrorEntry, pendingReview, isDue, completeReview, markMastered, repeatedPatterns } from "../lib/errorLog";
 import { XP_RULES } from "../lib/gamification";
@@ -12,6 +12,22 @@ const ALL_TOPICS = [...MATH_TOPICS, ...ENGLISH_TOPICS];
 const RED = "#ef4444";
 
 type SortMode = "recency" | "frequency" | "severity";
+
+interface ErrorAnalysis {
+  summary: string;
+  rootCause: string;
+  skill: string;
+  lesson: string;
+  nextActions: string[];
+  reviewQuestions: string[];
+}
+
+interface AnalysisState {
+  loading: boolean;
+  error?: string;
+  result?: ErrorAnalysis;
+  mock?: boolean;
+}
 
 function emptyForm() {
   return {
@@ -37,6 +53,7 @@ export default function ErrorLog() {
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "mastered" | "due">("all");
   const [sortMode, setSortMode] = useState<SortMode>("recency");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [analyses, setAnalyses] = useState<Record<string, AnalysisState>>({});
 
   useEffect(() => {
     loadData<ErrorEntry[]>("errorLog", []).then((e) => {
@@ -69,6 +86,32 @@ export default function ErrorLog() {
     setShowForm(false);
   };
 
+  const explainWithAI = async (entry: ErrorEntry) => {
+    setAnalyses((prev) => ({ ...prev, [entry.id]: { loading: true } }));
+    try {
+      const res = await fetch("/api/ai/explain-error", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-device-id": getDeviceId() },
+        body: JSON.stringify({
+          section: entry.section,
+          topic: entry.topic,
+          difficulty: entry.difficulty,
+          questionText: entry.questionText,
+          userAnswer: entry.userAnswer,
+          correctAnswer: entry.correctAnswer,
+          category: entry.category,
+        }),
+      });
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const data = await res.json();
+      setAnalyses((prev) => ({ ...prev, [entry.id]: { loading: false, result: data.analysis, mock: data.mock } }));
+    } catch {
+      setAnalyses((prev) => ({ ...prev, [entry.id]: { loading: false, error: "Couldn't get an AI explanation right now." } }));
+    }
+  };
+
+  const applyLesson = (entry: ErrorEntry, lesson: string) => updateEntry(entry.id, { lessonLearned: lesson });
+
   const updateEntry = (id: string, patch: Partial<ErrorEntry>) => {
     persist(entries.map((e) => (e.id === id ? { ...e, ...patch, updatedAt: Date.now() } : e)));
   };
@@ -86,7 +129,8 @@ export default function ErrorLog() {
     await syncBadges();
   };
 
-  const toggleMastered = (entry: ErrorEntry) => updateEntry(entry.id, { mastered: !entry.mastered });
+  const toggleMastered = (entry: ErrorEntry) =>
+    persist(entries.map((e) => (e.id === entry.id ? markMastered(e, !e.mastered) : e)));
 
   const dueCount = useMemo(() => entries.filter((e) => isDue(e)).length, [entries]);
   const patterns = useMemo(() => repeatedPatterns(entries), [entries]);
@@ -275,12 +319,42 @@ export default function ErrorLog() {
                     </div>
                   )}
 
-                  <div style={{ display: "flex", gap: 8 }}>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                     <button onClick={() => toggleMastered(e)} style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8", borderRadius: 8, padding: "8px 0", fontSize: 12, cursor: "pointer" }}>
                       {e.mastered ? "Reopen" : "Mark Mastered"}
                     </button>
                     <button onClick={() => removeEntry(e.id)} style={{ background: "none", border: "1px solid rgba(239,68,68,0.3)", color: "#fca5a5", borderRadius: 8, padding: "8px 14px", fontSize: 12, cursor: "pointer" }}>Delete</button>
                   </div>
+
+                  {/* AI coach explanation */}
+                  {(() => {
+                    const a = analyses[e.id];
+                    return (
+                      <div>
+                        <button
+                          onClick={() => explainWithAI(e)}
+                          disabled={a?.loading}
+                          style={{ width: "100%", background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b", borderRadius: 8, padding: "8px 0", fontSize: 12, cursor: a?.loading ? "default" : "pointer", opacity: a?.loading ? 0.6 : 1 }}
+                        >
+                          {a?.loading ? "Asking AI coach…" : "🤖 Explain with AI coach"}
+                        </button>
+                        {a?.error && <div style={{ fontSize: 11, color: "#fca5a5", marginTop: 6 }}>{a.error}</div>}
+                        {a?.result && (
+                          <div style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 8, padding: "10px 12px", marginTop: 8 }}>
+                            {a.mock && <div style={{ fontSize: 10, color: "#64748b", fontFamily: "monospace", marginBottom: 6 }}>MOCK MODE — no AI key configured, showing a template analysis</div>}
+                            <div style={{ fontSize: 12, color: "#e2e8f0", marginBottom: 6 }}>{a.result.summary}</div>
+                            <div style={{ fontSize: 11, color: "#fbbf24", marginBottom: 6, fontStyle: "italic" }}>{a.result.lesson}</div>
+                            {a.result.nextActions.length > 0 && (
+                              <ul style={{ margin: "0 0 8px 18px", padding: 0, fontSize: 11, color: "#94a3b8" }}>
+                                {a.result.nextActions.map((action, i) => <li key={i} style={{ marginBottom: 3 }}>{action}</li>)}
+                              </ul>
+                            )}
+                            <button onClick={() => applyLesson(e, a.result!.lesson)} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#e2e8f0", borderRadius: 6, padding: "5px 10px", fontSize: 11, cursor: "pointer" }}>Use as lesson learned</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
