@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { WEEKS } from "../lib/data";
-import { loadData, saveData } from "../lib/api-client";
+import { loadData, saveData, awardXp } from "../lib/api-client";
+import { XP_RULES } from "../lib/gamification";
 
 export default function Plan() {
   const [currentWeek, setCurrentWeek] = useState(0);
@@ -17,9 +18,11 @@ export default function Plan() {
 
   const toggle = (weekIdx: number, dayIdx: number) => {
     const key = `${weekIdx}-${dayIdx}`;
-    const next = { ...completedDays, [key]: !completedDays[key] };
+    const nowDone = !completedDays[key];
+    const next = { ...completedDays, [key]: nowDone };
     setCompletedDays(next);
     saveData("completedDays", next);
+    if (nowDone) awardXp(XP_RULES.completedPlanDay);
   };
 
   const totalDone = Object.values(completedDays).filter(Boolean).length;

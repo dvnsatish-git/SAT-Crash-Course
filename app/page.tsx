@@ -3,7 +3,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { daysUntilExam, WEEKS, MATH_TOPICS, ENGLISH_TOPICS } from "./lib/data";
 import { getLS } from "./lib/storage";
-import type { ExamRecord } from "./lib/types";
+import { loadData, syncBadges } from "./lib/api-client";
+import { emptyProfile, levelInfo, BADGE_CATALOG } from "./lib/gamification";
+import type { ExamRecord, GamificationProfile, StudentBadge } from "./lib/types";
 
 const H = { background: "linear-gradient(135deg, #0f0c29 0%, #1a1a2e 50%, #0f3460 100%)", minHeight: "100vh", fontFamily: "Georgia, serif", color: "#f0f0f0" };
 
@@ -12,12 +14,16 @@ export default function Dashboard() {
   const [completedDays, setCompletedDays] = useState<Record<string, boolean>>({});
   const [topicsDone, setTopicsDone] = useState<Record<string, boolean>>({});
   const [examRecords, setExamRecords] = useState<ExamRecord[]>([]);
+  const [profile, setProfile] = useState<GamificationProfile>(emptyProfile());
+  const [badges, setBadges] = useState<StudentBadge[]>([]);
 
   useEffect(() => {
     setDays(daysUntilExam());
     setCompletedDays(getLS("completedDays", {}));
     setTopicsDone(getLS("topicsDone", {}));
     setExamRecords(getLS("examRecords", []));
+    loadData<GamificationProfile>("gamification", emptyProfile()).then(setProfile);
+    syncBadges().then(setBadges);
   }, []);
 
   const completedCount = Object.values(completedDays).filter(Boolean).length;
@@ -75,6 +81,41 @@ export default function Dashboard() {
       </div>
 
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 0" }}>
+
+        {/* Level / XP / streak */}
+        {(() => {
+          const lvl = levelInfo(profile.xp);
+          return (
+            <div style={{ background: "linear-gradient(135deg,rgba(245,158,11,0.12),rgba(245,158,11,0.03))", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 14, padding: "14px 16px", marginBottom: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: "bold", color: "#f59e0b" }}>{lvl.name}</div>
+                  <div style={{ fontSize: 11, color: "#94a3b8", fontFamily: "monospace" }}>{profile.xp} XP{lvl.next ? ` · ${lvl.xpToNext} to ${lvl.next}` : " · max level"}</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 20, fontWeight: "bold", color: "#f97316" }}>🔥 {profile.currentStreak}</div>
+                  <div style={{ fontSize: 10, color: "#64748b", fontFamily: "monospace" }}>day streak · best {profile.longestStreak}</div>
+                </div>
+              </div>
+              <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 99, height: 5 }}>
+                <div style={{ background: "linear-gradient(90deg,#f59e0b,#f97316)", borderRadius: 99, height: 5, width: `${lvl.progress}%`, transition: "width 0.4s" }} />
+              </div>
+              {badges.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+                  {badges.map((b) => {
+                    const meta = BADGE_CATALOG.find((c) => c.code === b.code);
+                    if (!meta) return null;
+                    return (
+                      <span key={b.code} title={meta.description} style={{ fontSize: 11, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 99, padding: "3px 9px", fontFamily: "monospace" }}>
+                        {meta.icon} {meta.name}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Stats row */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 16 }}>
