@@ -88,6 +88,7 @@ export default function Dashboard() {
     { href: "/tracker", icon: "📈", label: "Score Tracker", color: "#10b981", desc: "Log and track your progress" },
     { href: "/errors", icon: "🧠", label: "Error Log", color: "#ef4444", desc: "Review mistakes on a spaced schedule" },
     { href: "/analytics", icon: "📉", label: "Analytics", color: "#06b6d4", desc: "Domain accuracy, trends & patterns" },
+    { href: "/resources", icon: "🔗", label: "Official Resources", color: "#8b5cf6", desc: "Launch Khan Academy & Bluebook" },
     { href: "/tutor", icon: "🤖", label: "AI Tutor", color: "#f59e0b", desc: "Ask Claude anything SAT-related" },
   ];
 

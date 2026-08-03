@@ -11,6 +11,7 @@ const ITEMS = [
   { href: "/tracker", icon: "📈", label: "Scores" },
   { href: "/errors", icon: "🧠", label: "Errors" },
   { href: "/analytics", icon: "📉", label: "Stats" },
+  { href: "/resources", icon: "🔗", label: "Resources" },
   { href: "/tutor", icon: "🤖", label: "Tutor" },
 ];
 
