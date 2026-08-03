@@ -1,11 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
 import { loadData, saveData } from "../lib/api-client";
-import { MATH_TOPICS, ENGLISH_TOPICS } from "../lib/data";
+import { MATH_TOPICS, ENGLISH_TOPICS, TARGET_SCORE } from "../lib/data";
 import { PRACTICE_SOURCE_LABELS } from "../lib/types";
 import type { ExamRecord, DomainResult, PracticeSource } from "../lib/types";
 
-const TARGET = 1500;
+const TARGET = TARGET_SCORE;
 const SOURCES = Object.entries(PRACTICE_SOURCE_LABELS) as [PracticeSource, string][];
 
 export default function Tracker() {
@@ -179,7 +179,7 @@ export default function Tracker() {
             {latest !== null && (
               <div style={{ background: latest >= TARGET ? "rgba(16,185,129,0.1)" : "rgba(249,115,22,0.1)", border: `1px solid ${latest >= TARGET ? "rgba(16,185,129,0.3)" : "rgba(249,115,22,0.3)"}`, borderRadius: 12, padding: "12px 14px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
-                  <div style={{ fontSize: 12, color: latest >= TARGET ? "#10b981" : "#f97316", fontWeight: "bold" }}>{latest >= TARGET ? "Target Reached!" : `${TARGET - latest} points from 1500 goal`}</div>
+                  <div style={{ fontSize: 12, color: latest >= TARGET ? "#10b981" : "#f97316", fontWeight: "bold" }}>{latest >= TARGET ? "Target Reached!" : `${TARGET - latest} points from ${TARGET} goal`}</div>
                   <div style={{ fontSize: 11, color: "#94a3b8" }}>Target: {TARGET} · Current: {latest}</div>
                 </div>
                 <div style={{ fontSize: 24 }}>{latest >= TARGET ? "🎯" : "🚀"}</div>

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { daysUntilExam, WEEKS, MATH_TOPICS, ENGLISH_TOPICS } from "./lib/data";
+import { daysUntilExam, WEEKS, MATH_TOPICS, ENGLISH_TOPICS, EXAM_DATE, TARGET_SCORE } from "./lib/data";
 import { getLS } from "./lib/storage";
 import { loadData, saveData, awardXp, syncBadges } from "./lib/api-client";
 import { emptyProfile, levelInfo, BADGE_CATALOG, XP_RULES } from "./lib/gamification";
@@ -48,8 +48,10 @@ export default function Dashboard() {
     ? Math.max(...examRecords.map((r) => r.totalScore))
     : null;
 
+  const examDateLabel = new Date(`${EXAM_DATE}T00:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" });
+
   // Current week based on days elapsed
-  const elapsedDays = Math.floor((new Date("2026-06-06").getTime() - new Date().getTime()) / 86400000);
+  const elapsedDays = Math.floor((new Date(EXAM_DATE).getTime() - new Date().getTime()) / 86400000);
   const currentWeekIdx = Math.min(5, Math.max(0, Math.floor((42 - Math.max(0, elapsedDays)) / 7)));
   const todayWeek = WEEKS[currentWeekIdx];
   const todayDayIdx = new Date().getDay(); // 0=Sun
@@ -97,7 +99,7 @@ export default function Dashboard() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <div>
               <div style={{ fontSize: 10, letterSpacing: 3, color: "#f97316", textTransform: "uppercase", fontFamily: "monospace" }}>SAT Prep Command Center</div>
-              <div style={{ fontSize: 20, fontWeight: "bold", color: "#fff", marginTop: 2 }}>June 6 · 1500+ Goal</div>
+              <div style={{ fontSize: 20, fontWeight: "bold", color: "#fff", marginTop: 2 }}>{examDateLabel} · {TARGET_SCORE}+ Goal</div>
             </div>
             <div style={{ background: "rgba(249,115,22,0.15)", border: "1px solid #f97316", borderRadius: 12, padding: "10px 18px", textAlign: "center" }}>
               <div style={{ fontSize: 32, fontWeight: "bold", color: "#f97316", lineHeight: 1 }}>{days}</div>

@@ -6,7 +6,7 @@ export const LEVELS = [
   { name: "Strategist", minXp: 500 },
   { name: "Scholar", minXp: 1000 },
   { name: "SAT Master", minXp: 2000 },
-  { name: "1500 Legend", minXp: 3500 },
+  { name: "1550 Legend", minXp: 3500 },
 ];
 
 export function emptyProfile(): GamificationProfile {
