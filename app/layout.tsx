@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import Nav from "./components/Nav";
+import { EXAM_DATE } from "./lib/data";
+
+const examDateLabel = new Date(`${EXAM_DATE}T00:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" });
 
 export const metadata: Metadata = {
-  title: "SAT Prep — June 6 Command Center",
+  title: `SAT Prep — ${examDateLabel} Command Center`,
   description: "Personalized SAT prep plan powered by Claude AI",
 };
 

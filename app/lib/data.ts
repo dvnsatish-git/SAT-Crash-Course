@@ -1,4 +1,5 @@
-export const EXAM_DATE = "2026-06-06";
+export const EXAM_DATE = "2026-09-12";
+export const TARGET_SCORE = 1550;
 
 export function daysUntilExam(): number {
   const exam = new Date(EXAM_DATE);
@@ -76,7 +77,7 @@ export const WEEKS = [
       { day: "Wed", math: "TUTOR SESSION: Final weak spots only", english: "Final English review", review: "Last tutor session" },
       { day: "Thu", math: "Light timed drill — no new topics (25 min)", english: "One timed passage (15 min)", review: "Stay calm, stay sharp" },
       { day: "Fri", math: "Review formula sheet + personal mistake patterns ONLY", english: "Skim notes lightly", review: "Pack supplies, sleep by 10pm" },
-      { day: "Sat", math: "SAT EXAM DAY — June 6", english: "SAT EXAM DAY", review: "You have prepared. Trust yourself!" },
+      { day: "Sat", math: "SAT EXAM DAY — Sept 12", english: "SAT EXAM DAY", review: "You have prepared. Trust yourself!" },
       { day: "Sun", math: "REST & celebrate the hard work", english: "REST", review: "Score arrives in ~2 weeks" },
     ],
   },
