@@ -1,4 +1,6 @@
 import { getLS, setLS } from "./storage";
+import { emptyProfile, recordActivity, checkNewBadges } from "./gamification";
+import type { GamificationProfile, StudentBadge, ErrorEntry } from "./types";
 
 export function getDeviceId(): string {
   if (typeof window === "undefined") return "";
@@ -68,4 +70,45 @@ export async function loadData<T>(key: string, fallback: T): Promise<T> {
 export async function saveData<T>(key: string, value: T): Promise<void> {
   setLS(key, value);
   await serverSet(key, value);
+}
+
+/**
+ * Read-only fetch scoped to an explicit device/share code — used by the
+ * read-only parent dashboard, which has no local data of its own for the
+ * student's device. Never touches localStorage.
+ */
+export async function loadDataForDevice<T>(deviceId: string, store: string, fallback: T): Promise<T> {
+  try {
+    const res = await fetch(`/api/storage?store=${encodeURIComponent(store)}`, {
+      headers: { "x-device-id": deviceId },
+    });
+    if (!res.ok) return fallback;
+    const json = await res.json();
+    return (json.data as T) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** Awards XP and updates the daily streak; safe to call fire-and-forget. */
+export async function awardXp(amount: number): Promise<GamificationProfile> {
+  const profile = await loadData<GamificationProfile>("gamification", emptyProfile());
+  const updated = recordActivity(profile, amount);
+  await saveData("gamification", updated);
+  return updated;
+}
+
+/** Re-checks badge eligibility against current profile + error log and persists any newly earned ones. */
+export async function syncBadges(): Promise<StudentBadge[]> {
+  const [profile, badges, errorLog] = await Promise.all([
+    loadData<GamificationProfile>("gamification", emptyProfile()),
+    loadData<StudentBadge[]>("badges", []),
+    loadData<ErrorEntry[]>("errorLog", []),
+  ]);
+  const masteredCount = errorLog.filter((e) => e.mastered).length;
+  const newly = checkNewBadges(profile, masteredCount, badges);
+  if (newly.length === 0) return badges;
+  const merged = [...badges, ...newly];
+  await saveData("badges", merged);
+  return merged;
 }

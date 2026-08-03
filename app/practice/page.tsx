@@ -3,8 +3,10 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { MATH_TOPICS, ENGLISH_TOPICS } from "../lib/data";
 import { QUESTIONS, getQuestions } from "../lib/questions";
 import { selectAdaptive } from "../lib/adaptive";
-import { loadData, saveData } from "../lib/api-client";
-import type { Question } from "../lib/types";
+import { loadData, saveData, awardXp } from "../lib/api-client";
+import { newErrorEntry } from "../lib/errorLog";
+import { XP_RULES } from "../lib/gamification";
+import type { Question, ErrorEntry } from "../lib/types";
 import type { QuestionHistory, QuestionRecord } from "../lib/adaptive";
 
 type Section = "math" | "english";
@@ -30,6 +32,15 @@ export default function Practice() {
       setHistory(h);
       setHistoryLoaded(true);
     });
+  }, []);
+
+  // Deep-link support so the dashboard's daily missions can launch a specific drill
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const s = params.get("section");
+    const t = params.get("topic");
+    if (s === "math" || s === "english") setSection(s);
+    if (t) setTopic(t);
   }, []);
 
   const topics = section === "math" ? MATH_TOPICS : ENGLISH_TOPICS;
@@ -102,6 +113,23 @@ export default function Practice() {
       const newHistory = { ...history, [currentQ.id]: updated };
       setHistory(newHistory);
       saveData("qHistory", newHistory); // fire-and-forget
+    }
+
+    awardXp(isCorrect ? XP_RULES.correctAnswer : XP_RULES.incorrectAttempt);
+
+    if (!isCorrect) {
+      const entry = newErrorEntry({
+        source: "practice",
+        section: currentQ.section,
+        topic: currentQ.topic,
+        difficulty: currentQ.difficulty,
+        questionRef: currentQ.question.slice(0, 80),
+        questionText: currentQ.question,
+        userAnswer: currentQ.options[idx],
+        correctAnswer: currentQ.options[currentQ.answer],
+        explanation: currentQ.explanation,
+      });
+      loadData<ErrorEntry[]>("errorLog", []).then((log) => saveData("errorLog", [entry, ...log]));
     }
   };
 
